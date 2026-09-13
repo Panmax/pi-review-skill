@@ -1,6 +1,12 @@
 ---
 name: pi-review
-description: Structured code-review workflow ported from earendil-works/pi-review (Codex-style rubric). Use when the user wants a code review — review uncommitted changes, review against a base branch, review a specific commit, review a GitHub pull request, or snapshot-review folders/files. Also handles the post-review handoff ("end-review" summary) and "fix review findings". Triggers: /review, review uncommitted, review branch main, review commit abc123, review pr 123, review folder src docs, 代码评审, 评审一下, 帮我 review, end-review, 修复评审问题.
+description: >-
+  Structured code-review workflow ported from earendil-works/pi-review (Codex-style rubric). Use when the
+  user wants a code review — review uncommitted changes, review against a base branch, review a specific
+  commit, review a GitHub pull request, or snapshot-review folders/files. Also handles the post-review
+  handoff ("end-review" summary) and "fix review findings". Triggers: /review, review uncommitted,
+  review branch main, review commit abc123, review pr 123, review folder src docs, 代码评审, 评审一下,
+  帮我 review, end-review, 修复评审问题.
 ---
 
 # pi-review — Code Review Workflow
