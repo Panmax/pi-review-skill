@@ -7,6 +7,8 @@ description: Structured code-review workflow ported from earendil-works/pi-revie
 
 A code-review skill for coding agents, ported from [`earendil-works/pi-review`](https://github.com/earendil-works/pi-review) (the Pi `/review` + `/end-review` extension). It works in any agent that loads Agent Skills (`SKILL.md`): DSH, Claude Code, pi, and others. The review rubric, git recipes, and output contracts are unchanged from the original; the parts tied to Pi's TUI (interactive selector, session-tree branching, review widget) are replaced by conversation-driven behavior.
 
+Users may invoke it in natural language ("review uncommitted", "评审一下未提交的改动") or with slash-style text ("/review uncommitted", "/review branch main") — all forms route to the workflow below. In Claude Code the skill is additionally exposed as the `/pi-review` command.
+
 ## 1. Parse the request into a review target
 
 | Request | Target |

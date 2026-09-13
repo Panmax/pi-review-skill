@@ -69,6 +69,27 @@ fix review findings   # implement the findings in priority order
 
 If a `REVIEW_GUIDELINES.md` exists at the project root (walking up parent directories), its contents are appended to the review as project-specific instructions that override the default rubric where more specific.
 
+## Triggering
+
+All of the following route to the same workflow:
+
+- **Natural language** — "review uncommitted", "评审一下未提交的改动", "帮我看看这个 PR"
+- **Slash-style text** — type `/review uncommitted` as a chat message; the token matches the skill's description triggers in hosts without a custom command system (e.g. DSH)
+- **Slash command** (Claude Code) — Claude Code merges custom commands into skills, so this installs as `/pi-review` automatically, in addition to description-based auto-triggering
+
+### Naming note (Claude Code)
+
+Claude Code bundles a `/code-review` skill and reserves `/review` as its alias. Do **not** rename this skill to `code-review`: it would shadow the bundled command while `/review` still points at the bundled one. The `pi-review` name sidesteps the conflict.
+
+### Automation
+
+For hooks and CI, skip the chat layer and invoke your agent headlessly — the request text becomes the API argument:
+
+```bash
+dsh --profile headless "review uncommitted"                        # DSH
+claude -p "Use the pi-review skill to review uncommitted changes"  # Claude Code
+```
+
 ## Output format
 
 Each review ends with:
