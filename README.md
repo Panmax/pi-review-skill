@@ -36,21 +36,23 @@ Restart your agent session so the new skill is discovered.
 
 ## Usage
 
-Ask your agent in natural language — the skill triggers on review requests:
+Invoke the skill with its own name as the command:
 
 ```
-review uncommitted
-review branch main
-review commit abc123
-review pr 123
-review pr https://github.com/owner/repo/pull/123
-review folder src docs
-review commit abc123 "Add retry to the upload path"
-review branch main --extra "focus on performance and error handling"
-review branch main --extra="focus on performance and error handling"
+/pi-review uncommitted
+/pi-review branch main
+/pi-review commit abc123
+/pi-review commit abc123 "Add retry to the upload path"
+/pi-review pr 123
+/pi-review pr https://github.com/owner/repo/pull/123
+/pi-review folder src docs
+/pi-review branch main --extra "focus on performance and error handling"
+/pi-review branch main --extra="focus on performance and error handling"
 ```
 
-After a review, finish with:
+Natural language works the same way ("review uncommitted", "评审一下未提交的改动").
+
+After a review, ask for the handoff in plain phrasing (this port has no separate command):
 
 ```
 end-review            # structured handoff: scope, verdict, findings, fix queue
@@ -69,15 +71,15 @@ fix review findings   # implement the findings in priority order
 
 ### Project guidelines
 
-If a `REVIEW_GUIDELINES.md` exists at the project root (walking up parent directories), its contents are appended to the review as project-specific instructions that override the default rubric where more specific.
+Walk up from the current directory to the anchor — the first directory containing `.dsh`, falling back to the first containing `.git` — and look for `REVIEW_GUIDELINES.md` there only, stopping at that level (the original anchored on the `.pi` directory the same way). Its contents are appended to the review as project-specific instructions that override the default rubric where more specific.
 
 ## Triggering
 
 All of the following route to the same workflow:
 
+- **Skill gesture (DSH, Claude Code)** — `/pi-review` plus the target, e.g. `/pi-review uncommitted`, `/pi-review branch main`, `/pi-review pr 123`. Hosts resolve `/<skill-name>` against the skill registry, so the command is the skill's own name.
 - **Natural language** — "review uncommitted", "评审一下未提交的改动", "帮我看看这个 PR"
-- **Slash-style text** — type `/review uncommitted` as a chat message; the token matches the skill's description triggers in hosts without a custom command system (e.g. DSH)
-- **Slash command** (Claude Code) — Claude Code merges custom commands into skills, so this installs as `/pi-review` automatically, in addition to description-based auto-triggering
+- **Phrasings inherited from the original extension** — `review uncommitted`, and the original's `/review` / `/end-review` command words, are accepted as *request phrasing* only. They are not commands here: `/review` resolves to no skill and injects nothing, so always use `/pi-review`.
 
 ### Naming note (Claude Code)
 
@@ -105,6 +107,7 @@ Each review ends with:
 | Original (pi extension) | This port |
 |---|---|
 | `/review` TUI selector | Natural-language / chat target selection |
+| Commands `/review` + `/end-review` (Pi extension) | One skill, invoked as `/pi-review`; ending a review is a workflow step inside it, not a separate command |
 | Fresh review session on a session-tree branch | Review runs in the current conversation |
 | Review widget + `/end-review` navigation | `end-review` produces the handoff summary in-chat |
 | Smart default target (`uncommitted` → feature branch → commit) | Defaults to `uncommitted` when the tree is dirty, otherwise asks and suggests the base-branch diff |

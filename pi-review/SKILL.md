@@ -4,7 +4,7 @@ description: >-
   Structured code-review workflow ported from earendil-works/pi-review (Codex-style rubric). Use when the
   user wants a code review — review uncommitted changes, review against a base branch, review a specific
   commit, review a GitHub pull request, or snapshot-review folders/files. Also handles the post-review
-  handoff ("end-review" summary) and "fix review findings". Triggers: /review, review uncommitted,
+  handoff ("end-review" summary) and "fix review findings". Triggers: /pi-review, /review, review uncommitted,
   review branch main, review commit abc123, review pr 123, review folder src docs, 代码评审, 评审一下,
   帮我 review, end-review, 修复评审问题.
 ---
@@ -13,9 +13,11 @@ description: >-
 
 A code-review skill for coding agents, ported from [`earendil-works/pi-review`](https://github.com/earendil-works/pi-review) (the Pi `/review` + `/end-review` extension). It works in any agent that loads Agent Skills (`SKILL.md`): DSH, Claude Code, pi, and others. The review rubric, git recipes, and output contracts are unchanged from the original; the parts tied to Pi's TUI (interactive selector, session-tree branching, review widget) are replaced by conversation-driven behavior.
 
-Users may invoke it in natural language ("review uncommitted", "评审一下未提交的改动") or with slash-style text ("/review uncommitted", "/review branch main") — all forms route to the workflow below. In Claude Code the skill is additionally exposed as the `/pi-review` command.
+Invoke it with the skill-name gesture `/pi-review` (e.g. `/pi-review uncommitted`, `/pi-review branch main`, `/pi-review pr 123`), or just describe the request in natural language ("review uncommitted", "评审一下未提交的改动"). Hosts resolve `/<skill-name>` against the skill registry, so the command is this skill's own name. `/review` and `/end-review` were the commands of the *original Pi extension*: in this port they are accepted only as request phrasing — `/review` resolves to no skill, so it injects nothing and must never be presented as this skill's command.
 
 ## 1. Parse the request into a review target
+
+Give the target as a `/pi-review` argument (`/pi-review branch main`) or as plain phrasing (`review branch main`); the two are equivalent.
 
 | Request | Target |
 |---|---|
@@ -227,7 +229,7 @@ Output all findings the author would fix if they knew about them. If there are n
 
 ## 5. End-of-review handoff ("end-review" / 结束评审)
 
-When the user finishes a review and asks for the handoff, produce the structured summary below so the findings can be acted on immediately. Do not omit findings — include every actionable issue identified during the review.
+When the user finishes a review and asks for the handoff — the phrase "end-review" / "结束评审", or `/pi-review end-review`; this port has no separate command — produce the structured summary below so the findings can be acted on immediately. Do not omit findings — include every actionable issue identified during the review.
 
 The interactive review is ending; produce the structured handoff below so it can be used immediately to implement fixes.
 
