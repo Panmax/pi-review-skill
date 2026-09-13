@@ -45,7 +45,9 @@ review commit abc123
 review pr 123
 review pr https://github.com/owner/repo/pull/123
 review folder src docs
+review commit abc123 "Add retry to the upload path"
 review branch main --extra "focus on performance and error handling"
+review branch main --extra="focus on performance and error handling"
 ```
 
 After a review, finish with:
@@ -105,6 +107,10 @@ Each review ends with:
 | `/review` TUI selector | Natural-language / chat target selection |
 | Fresh review session on a session-tree branch | Review runs in the current conversation |
 | Review widget + `/end-review` navigation | `end-review` produces the handoff summary in-chat |
+| Smart default target (`uncommitted` → feature branch → commit) | Defaults to `uncommitted` when the tree is dirty, otherwise asks and suggests the base-branch diff |
+| Session-scoped shared custom instructions (`Add`/`Remove` in the selector) | Not ported — use project-level `REVIEW_GUIDELINES.md` for durable instructions, or one-off `--extra` |
+| Always runs `gh pr checkout` for PR review | Checks out only when the PR head is not available locally, so it never moves your working tree unnecessarily |
+| Interactive only (`Review requires interactive mode`) | Runs headless too, e.g. in CI or scheduled jobs |
 
 ## Credits & license
 

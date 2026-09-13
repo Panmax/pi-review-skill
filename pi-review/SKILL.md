@@ -15,28 +15,95 @@ Users may invoke it in natural language ("review uncommitted", "评审一下未�
 |---|---|
 | "review uncommitted" | uncommitted |
 | "review branch \<name\>" | base branch diff |
-| "review commit \<sha\>" | single commit |
+| "review commit \<sha\> [title...]" | single commit (title is optional context) |
 | "review pr \<number \| GitHub URL\>" | pull request |
-| "review folder \<paths...\>" | snapshot review (not a diff) |
-| `--extra "..."` (works with any mode) | additional user-provided review instruction |
+| "review folder \<paths...\>" | snapshot review (not a diff); paths are whitespace-separated |
+| `--extra "..."` or `--extra=...` (works with any mode) | additional user-provided review instruction |
 
-If no target is given: default to **uncommitted** when the working tree has uncommitted changes (staged, unstaged, or untracked); otherwise ask the user which target to review (suggest the diff against the default branch).
+Target selection rules:
+
+- An explicit target is used as-is, without confirmation.
+- With no target given: default to **uncommitted** when the working tree has uncommitted changes (staged, unstaged, or untracked); otherwise ask the user which target to review, suggesting the diff against the default branch. (The original extension auto-selected "base branch" when on a feature branch and "commit" otherwise; asking first is the chat-appropriate equivalent — see the README's differences table.)
+- If the current directory is not a git repository, say so and stop (the original guarded this with `git rev-parse --git-dir`).
+- `--extra` with no value is an error — ask for the missing value.
 
 ## 2. Gather the changes (via shell commands)
 
 - **uncommitted**: `git status --porcelain`; inspect `git diff HEAD` for tracked changes and read untracked files directly.
 - **baseBranch**: resolve the merge base first — `git rev-parse --abbrev-ref '<branch>@{upstream}'`, then `git merge-base HEAD <upstream>`; if that fails, fall back to `git merge-base HEAD <branch>`. Then inspect `git diff <mergeBaseSha>`.
 - **commit**: `git show <sha>` and review the full diff it introduces.
-- **pullRequest**: requires `gh`. Get base branch and title via `gh pr view <n> --json baseRefName,title,headRefName`, compute the merge base as in baseBranch mode, and inspect `git diff <mergeBaseSha>`. If the PR head is not available locally, fetch/checkout it first (`gh pr checkout <n>`) — PR checkout requires a clean working tree (no changes to tracked files); if dirty, tell the user to commit or stash first.
+- **pullRequest**: requires `gh`. Verify it is installed and authenticated (`gh auth status`); if not, give the setup hint (install from https://cli.github.com/ — macOS `brew install gh` — then `gh auth login`). Get base branch and title via `gh pr view <n> --json baseRefName,title,headRefName`, compute the merge base as in baseBranch mode, and inspect `git diff <mergeBaseSha>`. PR checkout requires a clean working tree (no changes to tracked files); if dirty, tell the user to commit or stash first. Note: the original always ran `gh pr checkout <n>`; this port checks out only when the PR head is not available locally, so it never moves the user's working tree unnecessarily (see the README's differences table).
 - **folder**: no diff. Read the files under the given paths directly (snapshot review).
+
+### Focus text for each mode (verbatim from the original)
+
+Use these exact strings as the mode-specific focus (see §4 for where they go), substituting the placeholders:
+
+- **uncommitted**
+
+  ```text
+  Review the current code changes (staged, unstaged, and untracked files) and provide prioritized findings.
+  ```
+
+- **baseBranch**, merge base resolved
+
+  ```text
+  Review the code changes against the base branch '{baseBranch}'. The merge base commit for this comparison is {mergeBaseSha}. Run `git diff {mergeBaseSha}` to inspect the changes relative to {baseBranch}. Provide prioritized, actionable findings.
+  ```
+
+- **baseBranch**, no merge base
+
+  ```text
+  Review the code changes against the base branch '{branch}'. Start by finding the merge diff between the current branch and {branch}'s upstream e.g. (`git merge-base HEAD "$(git rev-parse --abbrev-ref "{branch}@{upstream}")"`), then run `git diff` against that SHA to see what changes we would merge into the {branch} branch. Provide prioritized, actionable findings.
+  ```
+
+- **commit**, with title
+
+  ```text
+  Review the code changes introduced by commit {sha} ("{title}"). Provide prioritized, actionable findings.
+  ```
+
+- **commit**, no title
+
+  ```text
+  Review the code changes introduced by commit {sha}. Provide prioritized, actionable findings.
+  ```
+
+- **pullRequest**, merge base resolved
+
+  ```text
+  Review pull request #{prNumber} ("{title}") against the base branch '{baseBranch}'. The merge base commit for this comparison is {mergeBaseSha}. Run `git diff {mergeBaseSha}` to inspect the changes that would be merged. Provide prioritized, actionable findings.
+  ```
+
+- **pullRequest**, no merge base
+
+  ```text
+  Review pull request #{prNumber} ("{title}") against the base branch '{baseBranch}'. Start by finding the merge base between the current branch and {baseBranch} (e.g., `git merge-base HEAD {baseBranch}`), then run `git diff` against that SHA to see the changes that would be merged. Provide prioritized, actionable findings.
+  ```
+
+- **folder**
+
+  ```text
+  Review the code in the following paths: {paths}. This is a snapshot review (not a diff). Read the files directly in these paths and provide prioritized, actionable findings.
+  ```
 
 ## 3. Project review guidelines
 
-If `REVIEW_GUIDELINES.md` exists at the project root (directory containing `.git`; also walk up parent directories), append its contents to the review input as project review instructions — they override the default rubric where more specific.
+Walk up from the current directory to find the project anchor: the first directory containing a `.dsh` directory, falling back to the first containing `.git`. Look for `REVIEW_GUIDELINES.md` in **that anchor directory only**, and stop the upward search there — if the anchor has no such file, there are no project instructions. (This mirrors the original, which anchored on the directory containing `.pi` and stopped there instead of continuing up into parent repositories.)
+
+When found, append its contents as the project-instructions block described in §4; it overrides the default rubric where more specific.
 
 ## 4. Perform the review
 
-Act as the code reviewer defined by the following rubric; apply it verbatim to the gathered changes. Then emit the output format it requires (findings with [P0]–[P3], verdict "correct" or "needs attention", and the mandatory Human Reviewer Callouts section).
+Assemble the review input in exactly this order — the rubric's own precedence rule ("if you encounter more specific guidelines elsewhere … those override these general instructions") depends on the order and wording of these blocks:
+
+1. The review rubric below, verbatim.
+2. The line `Please perform a code review with the following focus:` followed by the mode-specific focus text from §2.
+3. If recurring shared review instructions apply to all reviews, the line `Shared custom review instructions (applies to all reviews):` followed by them. (The original stored these in session state via its selector; here the durable equivalent is `REVIEW_GUIDELINES.md`, while one-off additions arrive through `--extra`.)
+4. If the user passed `--extra`, the line `Additional user-provided review instruction:` followed by that text.
+5. If a `REVIEW_GUIDELINES.md` was found (§3), the line `This project has additional instructions for code reviews:` followed by its contents.
+
+Act as the code reviewer defined by the rubric and emit the output format it requires (findings with [P0]–[P3], verdict "correct" or "needs attention", and the mandatory Human Reviewer Callouts section).
 
 # Review Guidelines
 
