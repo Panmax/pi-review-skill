@@ -4,20 +4,20 @@ description: >-
   Structured code-review workflow ported from earendil-works/pi-review (Codex-style rubric). Use when the
   user wants a code review — review uncommitted changes, review against a base branch, review a specific
   commit, review a GitHub pull request, or snapshot-review folders/files. Also handles the post-review
-  handoff ("end-review" summary) and "fix review findings". Triggers: /pi-review, /review, review uncommitted,
-  review branch main, review commit abc123, review pr 123, review folder src docs, 代码评审, 评审一下,
-  帮我 review, end-review, 修复评审问题.
+  handoff ("end-review" summary) and "fix review findings". Triggers: /pi-review, /skill:pi-review, /review,
+  review uncommitted, review branch main, review commit abc123, review pr 123, review folder src docs,
+  代码评审, 评审一下, 帮我 review, end-review, 修复评审问题.
 ---
 
 # pi-review — Code Review Workflow
 
 A code-review skill for coding agents, ported from [`earendil-works/pi-review`](https://github.com/earendil-works/pi-review) (the Pi `/review` + `/end-review` extension). It works in any agent that loads Agent Skills (`SKILL.md`): DSH, Claude Code, pi, and others. The review rubric, git recipes, and output contracts are unchanged from the original; the parts tied to Pi's TUI (interactive selector, session-tree branching, review widget) are replaced by conversation-driven behavior.
 
-Invoke it with the skill-name gesture `/pi-review` (e.g. `/pi-review uncommitted`, `/pi-review branch main`, `/pi-review pr 123`), or just describe the request in natural language ("review uncommitted", "评审一下未提交的改动"). Hosts resolve `/<skill-name>` against the skill registry, so the command is this skill's own name. `/review` and `/end-review` were the commands of the *original Pi extension*: in this port they are accepted only as request phrasing — `/review` resolves to no skill, so it injects nothing and must never be presented as this skill's command.
+Invoke it with the host's skill gesture — `/pi-review` in DSH and Claude Code, `/skill:pi-review` in pi (e.g. `/pi-review uncommitted`, `/pi-review branch main`, `/skill:pi-review pr 123`) — or just describe the request in natural language ("review uncommitted", "评审一下未提交的改动"). The gesture resolves against the host's skill registry, so the command is built from this skill's own name. `/review` and `/end-review` were the commands of the *original Pi extension*: in this port they are accepted only as request phrasing — `/review` resolves to no skill (in Claude Code it is the built-in `code-review` alias), so it never injects this skill and must never be presented as its command.
 
 ## 1. Parse the request into a review target
 
-Give the target as a `/pi-review` argument (`/pi-review branch main`) or as plain phrasing (`review branch main`); the two are equivalent.
+Give the target as an argument to the skill gesture (`/pi-review branch main`, or `/skill:pi-review branch main` in pi) or as plain phrasing (`review branch main`); the two are equivalent.
 
 | Request | Target |
 |---|---|

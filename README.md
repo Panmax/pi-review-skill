@@ -24,19 +24,24 @@ Clone and copy the `pi-review/` directory into your agent's skills directory:
 git clone https://github.com/Panmax/pi-review-skill.git
 ```
 
-| Agent | User-level skills dir | Copy command |
+| Agent | Skills dir | Copy command |
 |---|---|---|
-| DSH | `~/.dsh/skills/` or `~/.agents/skills/` | `cp -r pi-review-skill/pi-review ~/.dsh/skills/` |
+| DSH | `~/.dsh/skills/` | `cp -r pi-review-skill/pi-review ~/.dsh/skills/` |
 | DSH (project) | `<repo>/.dsh/skills/` | `cp -r pi-review-skill/pi-review <repo>/.dsh/skills/` |
 | Claude Code | `~/.claude/skills/` | `cp -r pi-review-skill/pi-review ~/.claude/skills/` |
 | Claude Code (project) | `<repo>/.claude/skills/` | `cp -r pi-review-skill/pi-review <repo>/.claude/skills/` |
-| pi | any path | `pi --skill pi-review-skill/pi-review` |
+| pi | `~/.pi/agent/skills/` | `cp -r pi-review-skill/pi-review ~/.pi/agent/skills/` |
+| pi (project) | `<repo>/.pi/skills/` | `cp -r pi-review-skill/pi-review <repo>/.pi/skills/` |
 
-Restart your agent session so the new skill is discovered.
+`~/.agents/skills/` is a cross-harness location read by both DSH (`user-agents` root) and pi. Install there once and symlink into `~/.claude/skills/` — which does not read it — to maintain a single copy for all three.
+
+To try it without installing, pi takes a path directly: `pi --skill pi-review-skill/pi-review`. This is a per-run flag, not an install; it must be repeated every session.
+
+DSH and Claude Code pick up new skills without a restart (DSH watches its skill roots; Claude Code re-scans). pi scans skill locations at startup, so restart the pi session.
 
 ## Usage
 
-Invoke the skill with its own name as the command:
+Invoke the skill with its own name as the command (DSH, Claude Code):
 
 ```
 /pi-review uncommitted
@@ -49,6 +54,8 @@ Invoke the skill with its own name as the command:
 /pi-review branch main --extra "focus on performance and error handling"
 /pi-review branch main --extra="focus on performance and error handling"
 ```
+
+In pi the same arguments go to `/skill:pi-review` (pi registers skills under the `skill:` prefix), e.g. `/skill:pi-review uncommitted`.
 
 Natural language works the same way ("review uncommitted", "评审一下未提交的改动").
 
@@ -77,13 +84,14 @@ Walk up from the current directory to the anchor — the first directory contain
 
 All of the following route to the same workflow:
 
-- **Skill gesture (DSH, Claude Code)** — `/pi-review` plus the target, e.g. `/pi-review uncommitted`, `/pi-review branch main`, `/pi-review pr 123`. Hosts resolve `/<skill-name>` against the skill registry, so the command is the skill's own name.
+- **Skill gesture (DSH, Claude Code)** — `/pi-review` plus the target, e.g. `/pi-review uncommitted`, `/pi-review branch main`, `/pi-review pr 123`. Both hosts resolve a bare `/<skill-name>` against the skill registry, so the command is the skill's own name.
+- **Skill gesture (pi)** — `/skill:pi-review` plus the target, e.g. `/skill:pi-review uncommitted`. pi registers skills under a `skill:` prefix rather than as bare names (controlled by its `enableSkillCommands` setting, on by default).
 - **Natural language** — "review uncommitted", "评审一下未提交的改动", "帮我看看这个 PR"
-- **Phrasings inherited from the original extension** — `review uncommitted`, and the original's `/review` / `/end-review` command words, are accepted as *request phrasing* only. They are not commands here: `/review` resolves to no skill and injects nothing, so always use `/pi-review`.
+- **Phrasings inherited from the original extension** — `review uncommitted`, and the original's `/review` / `/end-review` command words, are accepted as *request phrasing* only. They are not commands here: `/review` never reaches this skill (in Claude Code it is the built-in `code-review` alias; elsewhere it resolves to nothing), so always use `/pi-review` or `/skill:pi-review`.
 
 ### Naming note (Claude Code)
 
-Claude Code bundles a `/code-review` skill and reserves `/review` as its alias. Do **not** rename this skill to `code-review`: it would shadow the bundled command while `/review` still points at the bundled one. The `pi-review` name sidesteps the conflict.
+Claude Code bundles a `code-review` skill registered with `review` as an alias, so both `/code-review` and `/review` reach the built-in one. Do **not** rename this skill to `code-review`: it would collide with the bundled command while `/review` still points at the bundled one. The `pi-review` name sidesteps the conflict.
 
 ### Automation
 
@@ -92,6 +100,7 @@ For hooks and CI, skip the chat layer and invoke your agent headlessly — the r
 ```bash
 dsh --profile headless "review uncommitted"                        # DSH
 claude -p "Use the pi-review skill to review uncommitted changes"  # Claude Code
+pi -p "Use the pi-review skill to review uncommitted changes"      # pi
 ```
 
 ## Output format
@@ -107,7 +116,7 @@ Each review ends with:
 | Original (pi extension) | This port |
 |---|---|
 | `/review` TUI selector | Natural-language / chat target selection |
-| Commands `/review` + `/end-review` (Pi extension) | One skill, invoked as `/pi-review`; ending a review is a workflow step inside it, not a separate command |
+| Commands `/review` + `/end-review` (Pi extension) | One skill, invoked as `/pi-review` (`/skill:pi-review` in pi); ending a review is a workflow step inside it, not a separate command |
 | Fresh review session on a session-tree branch | Review runs in the current conversation |
 | Review widget + `/end-review` navigation | `end-review` produces the handoff summary in-chat |
 | Smart default target (`uncommitted` → feature branch → commit) | Defaults to `uncommitted` when the tree is dirty, otherwise asks and suggests the base-branch diff |
