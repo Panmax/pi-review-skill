@@ -2,7 +2,7 @@
 
 A structured code-review skill for coding agents — a port of [`earendil-works/pi-review`](https://github.com/earendil-works/pi-review) (the Pi `/review` + `/end-review` extension) to the portable `SKILL.md` (Agent Skills) format.
 
-The review rubric, git recipes, and output contracts are unchanged from the original (the rubric itself originates from Codex's review feature, adapted by Earendil for pi). The parts tied to Pi's TUI — interactive selector, session-tree branching, review widget — are replaced by conversation-driven behavior, so it works in **any agent that loads Agent Skills**: [DSH](https://github.com/deepseek-ai/deepseek-harness), Claude Code, pi, and others.
+The review rubric, mode-specific focus prompts, and output contracts are unchanged from the original (the rubric itself originates from Codex's review feature, adapted by Earendil for pi). Git preparation verifies the requested review target. The parts tied to Pi's TUI — interactive selector, session-tree branching, review widget — are replaced by conversation-driven behavior, so it works in **any agent that loads Agent Skills**: [DSH](https://github.com/deepseek-ai/deepseek-harness), Claude Code, pi, and others.
 
 ## What it does
 
@@ -26,12 +26,14 @@ git clone https://github.com/Panmax/pi-review-skill.git
 
 | Agent | Skills dir | Copy command |
 |---|---|---|
-| DSH | `~/.dsh/skills/` | `cp -r pi-review-skill/pi-review ~/.dsh/skills/` |
-| DSH (project) | `<repo>/.dsh/skills/` | `cp -r pi-review-skill/pi-review <repo>/.dsh/skills/` |
-| Claude Code | `~/.claude/skills/` | `cp -r pi-review-skill/pi-review ~/.claude/skills/` |
-| Claude Code (project) | `<repo>/.claude/skills/` | `cp -r pi-review-skill/pi-review <repo>/.claude/skills/` |
-| pi | `~/.pi/agent/skills/` | `cp -r pi-review-skill/pi-review ~/.pi/agent/skills/` |
-| pi (project) | `<repo>/.pi/skills/` | `cp -r pi-review-skill/pi-review <repo>/.pi/skills/` |
+| DSH | `~/.dsh/skills/` | `mkdir -p ~/.dsh/skills/pi-review && cp -R pi-review-skill/pi-review/. ~/.dsh/skills/pi-review/` |
+| DSH (project) | `<repo>/.dsh/skills/` | `mkdir -p "<repo>/.dsh/skills/pi-review" && cp -R pi-review-skill/pi-review/. "<repo>/.dsh/skills/pi-review/"` |
+| Claude Code | `~/.claude/skills/` | `mkdir -p ~/.claude/skills/pi-review && cp -R pi-review-skill/pi-review/. ~/.claude/skills/pi-review/` |
+| Claude Code (project) | `<repo>/.claude/skills/` | `mkdir -p "<repo>/.claude/skills/pi-review" && cp -R pi-review-skill/pi-review/. "<repo>/.claude/skills/pi-review/"` |
+| pi | `~/.pi/agent/skills/` | `mkdir -p ~/.pi/agent/skills/pi-review && cp -R pi-review-skill/pi-review/. ~/.pi/agent/skills/pi-review/` |
+| pi (project) | `<repo>/.pi/skills/` | `mkdir -p "<repo>/.pi/skills/pi-review" && cp -R pi-review-skill/pi-review/. "<repo>/.pi/skills/pi-review/"` |
+
+Replace `<repo>` with your repository path. These commands create the destination on a fresh installation and copy into the explicit `pi-review/` directory on subsequent updates, without nesting another `pi-review/` directory inside it.
 
 `~/.agents/skills/` is a cross-harness location read by both DSH (`user-agents` root) and pi. Install there once and symlink into `~/.claude/skills/` — which does not read it — to maintain a single copy for all three.
 
@@ -73,12 +75,12 @@ fix review findings   # implement the findings in priority order
 | `uncommitted` | `git status --porcelain` + `git diff HEAD` + untracked files |
 | `branch <name>` | merge-base diff against the branch (upstream-aware) |
 | `commit <sha>` | full diff introduced by the commit |
-| `pr <n \| url>` | `gh pr view` for base/title, then merge-base diff (requires `gh`; clean tree for checkout) |
+| `pr <n \| url>` | Get current PR head with `gh pr view`, checkout/update when `HEAD` differs, verify the commit, then merge-base diff (requires `gh`; tracked files must be clean) |
 | `folder <paths…>` | snapshot review — files read directly, no diff |
 
 ### Project guidelines
 
-Walk up from the current directory to the anchor — the first directory containing `.dsh`, falling back to the first containing `.git` — and look for `REVIEW_GUIDELINES.md` there only, stopping at that level (the original anchored on the `.pi` directory the same way). Its contents are appended to the review as project-specific instructions that override the default rubric where more specific.
+Walk up from the current directory to the nearest directory containing `.dsh` or `.pi`. Stop at the Git repository root (a `.git` file or directory) if no closer anchor exists, using that root as the fallback. Look for `REVIEW_GUIDELINES.md` in the anchor only; do not continue into parent projects if the file is absent. This preserves the original `.pi` behavior for nested projects while supporting DSH. Its contents are appended to the review as project-specific instructions that override the default rubric where more specific.
 
 ## Triggering
 
@@ -121,7 +123,7 @@ Each review ends with:
 | Review widget + `/end-review` navigation | `end-review` produces the handoff summary in-chat |
 | Smart default target (`uncommitted` → feature branch → commit) | Defaults to `uncommitted` when the tree is dirty, otherwise asks and suggests the base-branch diff |
 | Session-scoped shared custom instructions (`Add`/`Remove` in the selector) | Not ported — use project-level `REVIEW_GUIDELINES.md` for durable instructions, or one-off `--extra` |
-| Always runs `gh pr checkout` for PR review | Checks out only when the PR head is not available locally, so it never moves your working tree unnecessarily |
+| Always runs `gh pr checkout` for PR review | Checks out/updates whenever `HEAD` differs from the current PR head SHA; skips checkout only on an exact match, and requires clean tracked files for review |
 | Interactive only (`Review requires interactive mode`) | Runs headless too, e.g. in CI or scheduled jobs |
 
 ## Credits & license

@@ -11,7 +11,7 @@ description: >-
 
 # pi-review — Code Review Workflow
 
-A code-review skill for coding agents, ported from [`earendil-works/pi-review`](https://github.com/earendil-works/pi-review) (the Pi `/review` + `/end-review` extension). It works in any agent that loads Agent Skills (`SKILL.md`): DSH, Claude Code, pi, and others. The review rubric, git recipes, and output contracts are unchanged from the original; the parts tied to Pi's TUI (interactive selector, session-tree branching, review widget) are replaced by conversation-driven behavior.
+A code-review skill for coding agents, ported from [`earendil-works/pi-review`](https://github.com/earendil-works/pi-review) (the Pi `/review` + `/end-review` extension). It works in any agent that loads Agent Skills (`SKILL.md`): DSH, Claude Code, pi, and others. The review rubric, mode-specific focus prompts, and output contracts are unchanged from the original. Git preparation verifies the requested review target; the parts tied to Pi's TUI (interactive selector, session-tree branching, review widget) are replaced by conversation-driven behavior.
 
 Invoke it with the host's skill gesture — `/pi-review` in DSH and Claude Code, `/skill:pi-review` in pi (e.g. `/pi-review uncommitted`, `/pi-review branch main`, `/skill:pi-review pr 123`) — or just describe the request in natural language ("review uncommitted", "评审一下未提交的改动"). The gesture resolves against the host's skill registry, so the command is built from this skill's own name. `/review` and `/end-review` were the commands of the *original Pi extension*: in this port they are accepted only as request phrasing — `/review` resolves to no skill (in Claude Code it is the built-in `code-review` alias), so it never injects this skill and must never be presented as its command.
 
@@ -40,8 +40,17 @@ Target selection rules:
 - **uncommitted**: `git status --porcelain`; inspect `git diff HEAD` for tracked changes and read untracked files directly.
 - **baseBranch**: resolve the merge base first — `git rev-parse --abbrev-ref '<branch>@{upstream}'`, then `git merge-base HEAD <upstream>`; if that fails, fall back to `git merge-base HEAD <branch>`. Then inspect `git diff <mergeBaseSha>`.
 - **commit**: `git show <sha>` and review the full diff it introduces.
-- **pullRequest**: requires `gh`. Verify it is installed and authenticated (`gh auth status`); if not, give the setup hint (install from https://cli.github.com/ — macOS `brew install gh` — then `gh auth login`). Get base branch and title via `gh pr view <n> --json baseRefName,title,headRefName`, compute the merge base as in baseBranch mode, and inspect `git diff <mergeBaseSha>`. PR checkout requires a clean working tree (no changes to tracked files); if dirty, tell the user to commit or stash first. Note: the original always ran `gh pr checkout <n>`; this port checks out only when the PR head is not available locally, so it never moves the user's working tree unnecessarily (see the README's differences table).
+- **pullRequest**: follow the PR preparation steps below before computing any diff.
 - **folder**: no diff. Read the files under the given paths directly (snapshot review).
+
+### PR preparation
+
+1. Verify that `gh` is installed and authenticated (`gh auth status`). If not, give the setup hint (install from https://cli.github.com/ — macOS `brew install gh` — then `gh auth login`).
+2. Preserve the user's PR reference (number or full GitHub URL) as `<pr>` in every `gh` command. Get its base branch, title, head branch, and current head commit with `gh pr view <pr> --json baseRefName,title,headRefName,headRefOid`. Stop if the command fails.
+3. Run `git status --porcelain`. Both PR checkout and review require no staged or unstaged changes to tracked files, because `git diff <mergeBaseSha>` includes working-tree changes. If dirty, tell the user to commit or stash first; do not automatically stash or discard anything.
+4. Compare `git rev-parse HEAD` with the returned `headRefOid`. If they differ, run `gh pr checkout <pr>` even when the PR branch already exists locally; this also refreshes a stale local PR branch. Skip checkout only when `HEAD` already equals the requested PR head commit.
+5. Verify that `git rev-parse HEAD` equals `headRefOid` and that tracked files are still clean. If checkout fails, the commits differ, or tracked files are dirty, stop and report the failure; do not review the current branch as a fallback. Untracked files must never be overwritten or deleted to make checkout succeed.
+6. With the requested PR head verified, compute the merge base against `baseRefName` as in baseBranch mode, then inspect `git diff <mergeBaseSha>` and read source files from this verified checkout. Do not compute the PR diff against an unrelated `HEAD` or infer the PR's identity from a local branch name alone.
 
 ### Focus text for each mode (verbatim from the original)
 
@@ -97,7 +106,7 @@ Use these exact strings as the mode-specific focus (see §4 for where they go), 
 
 ## 3. Project review guidelines
 
-Walk up from the current directory to find the project anchor: the first directory containing a `.dsh` directory, falling back to the first containing `.git`. Look for `REVIEW_GUIDELINES.md` in **that anchor directory only**, and stop the upward search there — if the anchor has no such file, there are no project instructions. (This mirrors the original, which anchored on the directory containing `.pi` and stopped there instead of continuing up into parent repositories.)
+Walk up from the current directory, checking each directory for a `.dsh` or `.pi` directory. The nearest directory containing either is the project anchor. If you reach the Git repository root first (identified by a `.git` file or directory), use it as the fallback anchor and do not search outside the repository. Look for `REVIEW_GUIDELINES.md` in **that anchor directory only**, and stop the upward search there — if the anchor has no such file, there are no project instructions. This preserves the original `.pi` anchor, supports DSH's `.dsh` anchor, and respects nested projects.
 
 When found, append its contents as the project-instructions block described in §4; it overrides the default rubric where more specific.
 
