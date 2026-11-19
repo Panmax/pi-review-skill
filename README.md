@@ -2,7 +2,7 @@
 
 A structured code-review skill for coding agents — a port of [`earendil-works/pi-review`](https://github.com/earendil-works/pi-review) (the Pi `/review` + `/end-review` extension) to the portable `SKILL.md` (Agent Skills) format.
 
-The review rubric, mode-specific focus prompts, and output contracts are unchanged from the original (the rubric itself originates from Codex's review feature, adapted by Earendil for pi). Git preparation verifies the requested review target. The parts tied to Pi's TUI — interactive selector, session-tree branching, review widget — are replaced by conversation-driven behavior, so it works in **any agent that loads Agent Skills**: [DSH](https://github.com/deepseek-ai/deepseek-harness), Claude Code, pi, and others.
+The review rubric, mode-specific focus prompts, and output contracts are unchanged from the original, with one addition: a copyable fix prompt whenever a review has actionable findings (the rubric itself originates from Codex's review feature, adapted by Earendil for pi). Git preparation verifies the requested review target. The parts tied to Pi's TUI — interactive selector, session-tree branching, review widget — are replaced by conversation-driven behavior, so it works in **any agent that loads Agent Skills**: [DSH](https://github.com/deepseek-ai/deepseek-harness), Claude Code, pi, and others.
 
 ## What it does
 
@@ -12,6 +12,7 @@ The review rubric, mode-specific focus prompts, and output contracts are unchang
 - Review a GitHub **pull request** (via `gh`)
 - Review one or more **folders/files** as a snapshot (not a diff)
 - Produce prioritized findings ([P0]–[P3]) with a clear verdict (`correct` / `needs attention`) and actionable follow-ups
+- Emit a copyable **Fix Prompt** for the agent implementing the fixes, with recheck, scope, and verification rules
 - Separate agent-facing findings from human callouts (migrations, dependency churn, auth changes, …)
 - Load shared project instructions from `REVIEW_GUIDELINES.md`
 - End a review with a structured handoff summary, then optionally implement the findings
@@ -111,7 +112,8 @@ Each review ends with:
 
 1. **Findings** tagged `[P0]`–`[P3]`, each with file location, why it matters, and what should change
 2. A verdict: `correct` (no blocking issues) or `needs attention`
-3. A mandatory **Human Reviewer Callouts (Non-Blocking)** section (migrations, new dependencies, lockfile changes, auth/permission changes, breaking contract changes, destructive operations, feature flags, config defaults)
+3. A copyable **Fix Prompt** when there are actionable findings (omitted otherwise)
+4. A mandatory **Human Reviewer Callouts (Non-Blocking)** section (migrations, new dependencies, lockfile changes, auth/permission changes, breaking contract changes, destructive operations, feature flags, config defaults)
 
 ## Differences from the original
 
